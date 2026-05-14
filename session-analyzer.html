@@ -604,9 +604,9 @@
         let uploadedFiles = [];
         let parsedData = null;
         
-        // GitHub配置 - Token从URL参数获取,避免泄露
+        // GitHub配置
         const GITHUB_CONFIG = {
-            token: new URLSearchParams(window.location.search).get('token') || '',
+            token: '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',
             owner: 'zoumaotao',
             repo: 'lingee',
             path: 'records.md'
