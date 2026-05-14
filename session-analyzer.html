@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Langfuse Session 成本测算工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .step {
+            margin-bottom: 30px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        
+        .step h3 {
+            display: inline-block;
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .step-content {
+            margin-top: 15px;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box h4 {
+            color: #0066cc;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        .file-upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f0f4ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-upload-area:hover {
+            border-color: #764ba2;
+            background: #f5f0ff;
+        }
+        
+        .file-upload-area.dragover {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-list {
+            margin-top: 20px;
+        }
+        
+        .file-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-item .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .file-item .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .price-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .price-input-group {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .price-input-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .price-input-group .unit {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .price-input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .price-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .calculate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-block;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+        }
+        
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .calculate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .btn-container .calculate-btn {
+            margin: 0 10px;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .result-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result-section h4 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .result-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .result-item .label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .result-item .value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .result-item .value.cost {
+            color: #28a745;
+        }
+        
+        .result-item .value.points {
+            color: #667eea;
+        }
+        
+        .result-item .detail {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .turn-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .turn-table th,
+        .turn-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .turn-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .turn-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .warning-box h5 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .warning-box p {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .formula-box {
+            background: #f0f8ff;
+            border: 1px solid #4169e1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .formula-box h5 {
+            color: #4169e1;
+            margin-bottom: 15px;
+        }
+        
+        .formula {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .highlight h3 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .highlight .big-number {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .highlight .unit {
+            font-size: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .step {
+                padding: 20px;
+            }
+            
+            .price-config {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Langfuse Session 成本测算工具</h1>
+            <p>快速计算智能体Session的实际消耗点数</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- 步骤1: 准备说明 -->
+            <div class="step">
+                <span class="step-number">1</span>
+                <h3>准备文件</h3>
+                <div class="step-content">
+                    <div class="info-box">
+                        <h4>你需要准备什么?</h4>
+                        <ul>
+                            <li><strong>Langfuse Session JSON文件</strong> - 从Langfuse导出的session日志</li>
+                            <li>文件格式应为JSON,包含traces数组</li>
+                            <li>每个trace应包含usage信息(input_tokens, output_tokens, cache_read_tokens等)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <h5>⚠️ 注意事项</h5>
+                        <p>
+                            本工具仅计算大模型Token消耗点数,不包括其他服务(websearch、ASR等)的消耗。
+                            如果session包含调试或重试数据,建议手动剔除后再计算。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 步骤2: 上传文件 -->
+            <div class="step">
+                <span class="step-number">2</span>
+                <h3>上传文件</h3>
+                <div class="step-content">
+                    <div class="info-box" style="background: #fff3cd; border-color: #ffc107;">
+                        <h4 style="color: #856404;">📝 请先输入描述信息</h4>
+                        <p style="color: #856404; margin-top: 8px;">
+                            <input type="text" id="sessionDescription" placeholder="如：报销Session、问数Session、财务分析Session" 
+                                style="width: 100%; padding: 10px; border: 1px solid #ffc107; border-radius: 6px; font-size: 14px;">
+                        </p>
+                        <p style="color: #856404; font-size: 12px; margin-top: 5px;">
+                            此描述用于收集业务信息,方便后续统计分析,请认真填写
+                        </p>
+                    </div>
+                    
+                    <div class="file-upload-area" id="dropZone" style="margin-top: 15px;">
+                        <div class="upload-icon">📁</div>
+                        <p><strong>点击上传或拖拽文件到此处</strong></p>
+                        <p style="color: #666; margin-top: 10px;">支持JSON格式,可上传多个文件</p>
+                        <input type="file" id="fileInput" class="file-input" accept=".json" multiple>
+                    </div>
+                    <!-- 计算与清空按钮 -->
+                    <div class="btn-container" style="margin-top: 20px;">
+                        <button class="calculate-btn" id="clearBtn" style="background: #6c757d;">清空文件</button>
+                        <button class="calculate-btn" id="calculateBtn" disabled>开始计算</button>
+                    </div>
+            
+                    
+                    <div class="file-list" id="fileList"></div>
+                </div>
+            </div>
+            
+            <!-- 步骤3: 配置价格 -->
+            <div class="step">
+                <span class="step-number">3</span>
+                <h3>配置模型价格</h3>
+                <div class="step-content">
+                    <p style="margin-bottom: 15px; color: #666;">
+                        消耗点数  通过  (输入token数+其他Usage) × 输入系数 、输出token数 × 输出系数 、 cache token数 × cache系数加权得出。输入对应模型的百万Token价格,系数会自动计算。默认使用GLM-5.1价格。
+                    </p>
+                    
+                    <div class="price-config">
+                        <div class="price-input-group">
+                            <label>输入Token价格 <span class="unit">(元/百万Token)</span></label>
+                            <input type="number" id="inputPrice" value="6" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="price-input-group">
+                            <label>输出Token价格 <span class="unit">(元/百万Token)</span></label>
+                            <input type="number" id="outputPrice" value="22" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="price-input-group">
+                            <label>Cache Token价格 <span class="unit">(元/百万Token)</span></label>
+                            <input type="number" id="cachePrice" value="1.5" step="0.01" min="0">
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+            
+            <!-- 结果展示 -->
+               <!-- 最终点数 -->
+                <div class="highlight" id="totalPointsSection">
+                    <h3>消耗点数总计</h3>
+                    <div class="big-number" id="totalPoints">0</div>
+                    <span class="unit">点</span>
+                    <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">
+                        客户花费: ¥<span id="totalCostLow">0.00</span> - ¥<span id="totalCostHigh">0.00</span>
+                        <br><span style="font-size: 12px; opacity: 0.8;">(按点数售价 ¥0.18-0.2/点 计算)</span>
+                    </p>
+                </div>
+            <div class="results" id="results">
+                <!-- Session概览 -->
+                <div class="result-section">
+                    <h4>📈 Session 概览</h4>
+                    <div class="result-grid" id="overviewGrid"></div>
+                </div>
+                
+                <!-- Token消耗详情 -->
+                <div class="result-section">
+                    <h4>💰 Token消耗详情</h4>
+                    <div class="result-grid" id="tokenGrid"></div>
+                </div>
+                
+                <!-- 成本计算结果 -->
+                <div class="result-section">
+                    <h4>💵 成本计算结果</h4>
+                    <div class="result-grid" id="costGrid"></div>
+                </div>
+            
+                
+                <!-- Turn级别明细 -->
+                <div class="result-section">
+                    <h4>📋 Turn级别明细</h4>
+                    <div style="overflow-x: auto;">
+                        <table class="turn-table" id="turnTable">
+                            <thead>
+                                <tr>
+                                    <th>Turn</th>
+                                    <th>LLM调用</th>
+                                    <th>Tool调用</th>
+                                    <th>Input Tokens</th>
+                                    <th>Output Tokens</th>
+                                    <th>Cache Tokens</th>
+                                    <th>总Tokens</th>
+                                    <th>成本(元)</th>
+                                    <th>点数</th>
+                                </tr>
+                            </thead>
+                            <tbody id="turnTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 业务vs调试分析 -->
+                <div class="result-section" id="analysisSection">
+                    <h4>🔍 业务vs调试分析建议</h4>
+                    <div id="analysisContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局状态
+        let uploadedFiles = [];
+        let parsedData = null;
+        
+        // GitHub配置 - Token从URL参数获取,避免泄露
+        const GITHUB_CONFIG = {
+            token: new URLSearchParams(window.location.search).get('token') || '',
+            owner: 'zoumaotao',
+            repo: 'lingee',
+            path: 'records.md'
+        };
+        
+        // DOM元素
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const results = document.getElementById('results');
+        
+        // 文件上传处理
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        function handleFiles(files) {
+            for (let file of files) {
+                if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                    uploadedFiles.push(file);
+                }
+            }
+            updateFileList();
+            updateCalculateButton();
+        }
+        
+        function updateFileList() {
+            fileList.innerHTML = uploadedFiles.map((file, index) => `
+                <div class="file-item">
+                    <div>
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <button class="remove-btn" onclick="removeFile(${index})">删除</button>
+                </div>
+            `).join('');
+        }
+        
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+            updateCalculateButton();
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+        
+        function updateCalculateButton() {
+            calculateBtn.disabled = uploadedFiles.length === 0;
+        }
+        
+        // 清空按钮点击
+        clearBtn.addEventListener('click', () => {
+            uploadedFiles = [];
+            parsedData = null;
+            updateFileList();
+            updateCalculateButton();
+            results.classList.remove('show');
+            // 重置文件输入
+            fileInput.value = '';
+        });
+        
+        // 计算按钮点击
+        calculateBtn.addEventListener('click', async () => {
+            if (uploadedFiles.length === 0) return;
+            
+            calculateBtn.disabled = true;
+            calculateBtn.textContent = '解析中...';
+            
+            try {
+                // 读取所有文件
+                const allData = [];
+                for (let file of uploadedFiles) {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    allData.push(data);
+                }
+                
+                // 合并数据
+                parsedData = mergeSessionData(allData);
+                
+                // 计算
+                calculateAndDisplay();
+                
+                calculateBtn.textContent = '开始计算';
+                calculateBtn.disabled = false;
+            } catch (error) {
+                alert('文件解析失败: ' + error.message);
+                calculateBtn.textContent = '开始计算';
+                calculateBtn.disabled = false;
+            }
+        });
+        
+        // 合并多个session数据
+        function mergeSessionData(dataArray) {
+            const merged = {
+                session_id: [],
+                traces: [],
+                total_input_tokens: 0,
+                total_output_tokens: 0,
+                total_cache_tokens: 0,
+                total_reasoning_tokens: 0,
+                llm_call_count: 0,
+                tool_call_count: 0
+            };
+            
+            dataArray.forEach(data => {
+                // 检查是否是trace文件(包含trace字段)
+                if (data.trace) {
+                    // 这是一个单独的trace文件
+                    merged.traces.push(data);
+                } else if (data.traces) {
+                    // 这是一个session文件,记录session ID
+                    if (data.id) {
+                        merged.session_id.push(data.id);
+                    }
+                }
+            });
+            
+            return merged;
+        }
+        
+        // 主计算函数
+        function calculateAndDisplay() {
+            const inputPrice = parseFloat(document.getElementById('inputPrice').value) || 6;
+            const outputPrice = parseFloat(document.getElementById('outputPrice').value) || 22;
+            const cachePrice = parseFloat(document.getElementById('cachePrice').value) || 1.5;
+            
+            // 检查描述是否填写
+            const description = document.getElementById('sessionDescription').value.trim();
+            if (!description) {
+                alert('请先填写描述信息,此信息用于收集业务数据');
+                document.getElementById('sessionDescription').focus();
+                return;
+            }
+            
+            // 解析traces并聚合
+            const turnData = parseTraces(parsedData.traces);
+            
+            // 计算总量
+            const totals = calculateTotals(turnData);
+            
+            // 计算成本和点数
+            const costResult = calculateCost(totals, inputPrice, outputPrice, cachePrice);
+            
+            // 提取模型信息
+            const models = extractModels(parsedData.traces);
+            
+            // 显示结果
+            displayResults(totals, costResult, turnData, inputPrice, outputPrice, cachePrice);
+            
+            // 保存记录到GitHub
+            saveRecordToGitHub(description, totals, costResult, models, inputPrice, outputPrice, cachePrice);
+            
+            // 显示结果区域
+            results.classList.add('show');
+            // 滚动到消耗点数总计位置
+            document.getElementById('totalPointsSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        // 提取使用的模型列表
+        function extractModels(traces) {
+            const models = new Set();
+            traces.forEach(traceData => {
+                const trace = traceData.trace || traceData;
+                const observations = traceData.observations || [];
+                observations.forEach(obs => {
+                    if (obs.type === 'GENERATION' && obs.model) {
+                        models.add(obs.model);
+                    }
+                });
+            });
+            return Array.from(models).join(', ') || 'glm-5';
+        }
+        
+        // 保存记录到GitHub
+        async function saveRecordToGitHub(description, totals, costResult, models, inputPrice, outputPrice, cachePrice) {
+            try {
+                // 获取当前文件内容
+                const getUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+                
+                const getResponse = await fetch(getUrl, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!getResponse.ok) {
+                    console.error('获取文件失败');
+                    return;
+                }
+                
+                const fileData = await getResponse.json();
+                const sha = fileData.sha;
+                let content = atob(fileData.content);
+                
+                // 生成新记录行
+                const now = new Date();
+                const timeStr = now.toLocaleString('zh-CN', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).replace(/\//g, '-');
+                
+                const sessionId = parsedData.session_id[0] || 'unknown';
+                const costLow = (costResult.totalPoints * 0.18).toFixed(2);
+                const costHigh = (costResult.totalPoints * 0.2).toFixed(2);
+                
+                const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ¥${inputPrice} | ¥${outputPrice} | ¥${cachePrice} | ¥${costResult.totalCost.toFixed(2)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |
+`;
+                
+                // 追加新记录
+                content += newRecord;
+                
+                // 更新文件
+                const updateResponse = await fetch(getUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `添加Session记录: ${description}`,
+                        content: btoa(unescape(encodeURIComponent(content))),
+                        sha: sha
+                    })
+                });
+                
+                if (updateResponse.ok) {
+                    console.log('记录已保存到GitHub');
+                } else {
+                    console.error('保存记录失败');
+                }
+            } catch (error) {
+                console.error('保存记录出错:', error);
+            }
+        }
+        
+        // 格式化Token数量
+        function formatTokenCount(count) {
+            if (count >= 1000000) {
+                return (count / 1000000).toFixed(2) + 'M';
+            } else if (count >= 1000) {
+                return (count / 1000).toFixed(1) + 'K';
+            }
+            return count.toString();
+        }
+        
+        // 解析traces提取turn级别数据
+        function parseTraces(traces) {
+            const turnMap = new Map();
+            
+            traces.forEach(traceData => {
+                // 获取trace对象
+                const trace = traceData.trace || traceData;
+                
+                // 尝试提取turn编号
+                const turnMatch = trace.name?.match(/turn[_\s]*(\d+|\?)/i);
+                let turnKey = turnMatch ? turnMatch[1] : null;
+                
+                // 如果没有turn信息,跳过这个trace(可能是session级别的空trace)
+                if (!turnKey) {
+                    return;
+                }
+                
+                const turnName = `turn_${turnKey}`;
+                
+                if (!turnMap.has(turnName)) {
+                    turnMap.set(turnName, {
+                        turn: turnKey,
+                        llm_calls: 0,
+                        tool_calls: 0,
+                        input_tokens: 0,
+                        output_tokens: 0,
+                        cache_tokens: 0,
+                        reasoning_tokens: 0,
+                        total_tokens: 0
+                    });
+                }
+                
+                const turnData = turnMap.get(turnName);
+                
+                // 从observations中提取数据
+                const observations = traceData.observations || trace.observations || [];
+                
+                // 统计LLM调用次数(GENERATION类型)
+                const generations = observations.filter(o => o.type === 'GENERATION');
+                turnData.llm_calls += generations.length;
+                
+                // 统计Tool调用次数(TOOL类型)
+                const tools = observations.filter(o => o.type === 'TOOL');
+                turnData.tool_calls += tools.length;
+                
+                // 从GENERATION中提取token使用量
+                generations.forEach(gen => {
+                    if (gen.usageDetails) {
+                        turnData.input_tokens += gen.usageDetails.input || 0;
+                        turnData.output_tokens += gen.usageDetails.output || 0;
+                        turnData.cache_tokens += gen.usageDetails.cache_read || 0;
+                        turnData.reasoning_tokens += gen.usageDetails.reasoning || 0;
+                    }
+                    // 兼容其他字段名
+                    if (gen.usage) {
+                        turnData.input_tokens += gen.usage.input || gen.usage.prompt_tokens || 0;
+                        turnData.output_tokens += gen.usage.output || gen.usage.completion_tokens || 0;
+                        turnData.cache_tokens += gen.usage.cache_read || gen.usage.cache_read_input_tokens || 0;
+                        turnData.reasoning_tokens += gen.usage.reasoning || 0;
+                    }
+                });
+                
+                // 计算总tokens
+                turnData.total_tokens = turnData.input_tokens + turnData.output_tokens + 
+                                        turnData.cache_tokens + turnData.reasoning_tokens;
+            });
+            
+            return Array.from(turnMap.values()).sort((a, b) => {
+                if (a.turn === '?') return 1;
+                if (b.turn === '?') return -1;
+                return parseInt(a.turn) - parseInt(b.turn);
+            });
+        }
+        
+        // 计算总量
+        function calculateTotals(turnData) {
+            return turnData.reduce((acc, turn) => {
+                acc.llm_calls += turn.llm_calls;
+                acc.tool_calls += turn.tool_calls;
+                acc.input_tokens += turn.input_tokens;
+                acc.output_tokens += turn.output_tokens;
+                acc.cache_tokens += turn.cache_tokens;
+                acc.reasoning_tokens += turn.reasoning_tokens;
+                acc.total_tokens += turn.total_tokens;
+                return acc;
+            }, {
+                llm_calls: 0,
+                tool_calls: 0,
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_tokens: 0,
+                reasoning_tokens: 0,
+                total_tokens: 0,
+                turn_count: turnData.length
+            });
+        }
+        
+        // 计算成本和点数
+        function calculateCost(totals, inputPrice, outputPrice, cachePrice) {
+            // 第一步:计算实际成本
+            const inputCost = (totals.input_tokens * inputPrice) / 1000000;
+            const outputCost = (totals.output_tokens * outputPrice) / 1000000;
+            const cacheCost = (totals.cache_tokens * cachePrice) / 1000000;
+            const totalCost = inputCost + outputCost + cacheCost;
+            
+            // 第二步:计算点数 (1点 = ¥0.06)
+            const totalPoints = totalCost / 0.06;
+            
+            return {
+                inputCost,
+                outputCost,
+                cacheCost,
+                totalCost,
+                totalPoints,
+                inputCoefficient: inputPrice / 6,  // 相对于GLM-5基准价
+                outputCoefficient: outputPrice / 6,
+                cacheCoefficient: cachePrice / 6
+            };
+        }
+        
+        // 显示结果
+        function displayResults(totals, costResult, turnData, inputPrice, outputPrice, cachePrice) {
+            // Session概览
+            document.getElementById('overviewGrid').innerHTML = `
+                <div class="result-item">
+                    <div class="label">Session数量</div>
+                    <div class="value">${parsedData.session_id.length || 1}</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Turn数量</div>
+                    <div class="value">${totals.turn_count}</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">LLM调用次数</div>
+                    <div class="value">${totals.llm_calls}</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Tool调用次数</div>
+                    <div class="value">${totals.tool_calls}</div>
+                </div>
+            `;
+            
+            // Token消耗
+            document.getElementById('tokenGrid').innerHTML = `
+                <div class="result-item">
+                    <div class="label">输入Tokens</div>
+                    <div class="value">${formatNumber(totals.input_tokens)}</div>
+                    <div class="detail">${(totals.input_tokens / 1000000).toFixed(2)}M tokens</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">输出Tokens</div>
+                    <div class="value">${formatNumber(totals.output_tokens)}</div>
+                    <div class="detail">${(totals.output_tokens / 1000000).toFixed(2)}M tokens</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Cache Tokens</div>
+                    <div class="value">${formatNumber(totals.cache_tokens)}</div>
+                    <div class="detail">${(totals.cache_tokens / 1000000).toFixed(2)}M tokens</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">总Tokens</div>
+                    <div class="value">${formatNumber(totals.total_tokens)}</div>
+                    <div class="detail">${(totals.total_tokens / 1000000).toFixed(2)}M tokens</div>
+                </div>
+            `;
+            
+            // 成本计算
+            document.getElementById('costGrid').innerHTML = `
+                <div class="result-item">
+                    <div class="label">输入成本</div>
+                    <div class="value cost">¥${costResult.inputCost.toFixed(4)}</div>
+                    <div class="detail">¥${inputPrice}/M × ${(totals.input_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">输出成本</div>
+                    <div class="value cost">¥${costResult.outputCost.toFixed(4)}</div>
+                    <div class="detail">¥${outputPrice}/M × ${(totals.output_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Cache成本</div>
+                    <div class="value cost">¥${costResult.cacheCost.toFixed(4)}</div>
+                    <div class="detail">¥${cachePrice}/M × ${(totals.cache_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">总成本</div>
+                    <div class="value cost">¥${costResult.totalCost.toFixed(4)}</div>
+                </div>
+            `;
+            
+            // 最终点数
+            document.getElementById('totalPoints').textContent = costResult.totalPoints.toFixed(2);
+            document.getElementById('totalCostLow').textContent = (costResult.totalPoints * 0.18).toFixed(2);
+            document.getElementById('totalCostHigh').textContent = (costResult.totalPoints * 0.2).toFixed(2);
+            
+            // Turn明细表
+            const turnTableBody = document.getElementById('turnTableBody');
+            turnTableBody.innerHTML = turnData.map(turn => {
+                const turnCost = calculateTurnCost(turn, inputPrice, outputPrice, cachePrice);
+                return `
+                    <tr>
+                        <td>${turn.turn}</td>
+                        <td>${turn.llm_calls}</td>
+                        <td>${turn.tool_calls}</td>
+                        <td>${formatNumber(turn.input_tokens)}</td>
+                        <td>${formatNumber(turn.output_tokens)}</td>
+                        <td>${formatNumber(turn.cache_tokens)}</td>
+                        <td>${formatNumber(turn.total_tokens)}</td>
+                        <td>¥${turnCost.cost.toFixed(4)}</td>
+                        <td>${turnCost.points.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // 添加汇总行
+            turnTableBody.innerHTML += `
+                <tr style="font-weight: bold; background: #f0f0f0;">
+                    <td>总计</td>
+                    <td>${totals.llm_calls}</td>
+                    <td>${totals.tool_calls}</td>
+                    <td>${formatNumber(totals.input_tokens)}</td>
+                    <td>${formatNumber(totals.output_tokens)}</td>
+                    <td>${formatNumber(totals.cache_tokens)}</td>
+                    <td>${formatNumber(totals.total_tokens)}</td>
+                    <td>¥${costResult.totalCost.toFixed(4)}</td>
+                    <td>${costResult.totalPoints.toFixed(2)}</td>
+                </tr>
+            `;
+            
+            // 业务vs调试分析建议
+            generateAnalysis(totals, turnData);
+        }
+        
+        // 计算单个turn的成本
+        function calculateTurnCost(turn, inputPrice, outputPrice, cachePrice) {
+            const cost = (turn.input_tokens * inputPrice + 
+                         turn.output_tokens * outputPrice + 
+                         turn.cache_tokens * cachePrice) / 1000000;
+            const points = cost / 0.06;
+            return { cost, points };
+        }
+        
+        // 生成分析建议
+        function generateAnalysis(totals, turnData) {
+            const analysisContent = document.getElementById('analysisContent');
+            
+            // 识别可疑turn
+            const suspiciousTurns = turnData.filter(turn => {
+                // output极短的turn
+                if (turn.output_tokens > 0 && turn.output_tokens < 300 && turn.llm_calls > 0) {
+                    return true;
+                }
+                // token为0但有LLM调用
+                if (turn.total_tokens === 0 && turn.llm_calls > 0) {
+                    return true;
+                }
+                return false;
+            });
+            
+            // 识别空turn
+            const emptyTurns = turnData.filter(turn => turn.llm_calls === 0 && turn.tool_calls === 0);
+            
+            // 识别重试模式(同一个tool调用多次)
+            // 这里简化处理,实际需要更复杂的分析
+            
+            let analysis = '<div style="line-height: 1.8;">';
+            
+            if (emptyTurns.length > 0) {
+                analysis += `
+                    <div class="warning-box" style="margin-bottom: 15px;">
+                        <h5>⚠️ 发现空Turn</h5>
+                        <p>以下Turn没有任何LLM或Tool调用,可能是系统事件或调试数据:</p>
+                        <ul style="margin-top: 10px;">
+                            ${emptyTurns.map(t => `<li>Turn ${t.turn}</li>`).join('')}
+                        </ul>
+                        <p style="margin-top: 10px;">
+                            <strong>建议:</strong> 排除这些Turn后重新计算,可以降低约 ${((emptyTurns.length / totals.turn_count) * 100).toFixed(1)}% 的Turn数量。
+                        </p>
+                    {}
+                    </div>
+                `;
+            }
+            
+            if (suspiciousTurns.length > 0) {
+                analysis += `
+                    <div class="warning-box" style="margin-bottom: 15px;">
+                        <h5>⚠️ 发现可疑Turn</h5>
+                        <p>以下Turn可能包含调试或重试数据:</p>
+                        <ul style="margin-top: 10px;">
+                            ${suspiciousTurns.map(t => {
+                                let reason = '';
+                                if (t.output_tokens > 0 && t.output_tokens < 300) {
+                                    reason = `Output极短(${t.output_tokens} tokens)`;
+                                } else if (t.total_tokens === 0 && t.llm_calls > 0) {
+                                    reason = 'LLM调用但token为0';
+                                }
+                                return `<li>Turn ${t.turn}: ${reason}</li>`;
+                            }).join('')}
+                        </ul>
+                        <p style="margin-top: 10px;">
+                            <strong>建议:</strong> 检查这些Turn的具体内容,如果确认是调试数据,建议排除后重新计算。
+                        </p>
+                    </div>
+                `;
+            }
+            
+            // 添加通用建议
+            analysis += `
+                <div class="info-box">
+                    <h4>💡 成本优化建议</h4>
+                    <ul>
+                        <li><strong>利用Cache:</strong> Cache成本仅为输入的${((parseFloat(document.getElementById('cachePrice').value) / parseFloat(document.getElementById('inputPrice').value)) * 100).toFixed(0)}%,应尽量复用上下文</li>
+                        <li><strong>减少重试:</strong> 每次重试都会产生完整成本,建议优化prompt和工具调用逻辑</li>
+                        <li><strong>选择合适模型:</strong> 简单任务可使用低成本模型,复杂任务才使用高端模型</li>
+                        <li><strong>精简上下文:</strong> 避免在context中传递过多历史信息,按需裁剪</li>
+                    </ul>
+                </div>
+            `;
+            
+            analysis += '</div>';
+            analysisContent.innerHTML = analysis;
+        }
+        
+        // 格式化数字
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toLocaleString();
+        }
+    </script>
+</body>
+</html>
+</html>
