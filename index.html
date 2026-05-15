@@ -513,23 +513,64 @@
                 <h3>配置模型价格</h3>
                 <div class="step-content">
                     <p style="margin-bottom: 15px; color: #666;">
-                        消耗点数  通过  (输入token数+其他Usage) × 输入系数 、输出token数 × 输出系数 、 cache token数 × cache系数加权得出。输入对应模型的百万Token价格,系数会自动计算。默认使用GLM-5价格。
+                        消耗点数通过 (输入token数 × 输入系数 + 输出token数 × 输出系数 + cache token数 × cache系数) 加权得出。<br>
+                        默认使用 <strong>GLM-5.1新品</strong> 价格（分段定价：输入长度&lt;32K用短输入价，≥32K用长输入价）。
                     </p>
                     
-                    <div class="price-config">
+                    <div class="info-box" style="margin-bottom: 20px;">
+                        <h4>📋 GLM-5.1新品价格表</h4>
+                        <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:14px;">
+                            <tr style="background:#f0f4ff;">
+                                <th style="padding:8px; border:1px solid #ddd;">输入长度</th>
+                                <th style="padding:8px; border:1px solid #ddd;">输入价格(元/百万Token)</th>
+                                <th style="padding:8px; border:1px solid #ddd;">输出价格(元/百万Token)</th>
+                                <th style="padding:8px; border:1px solid #ddd;">缓存价格(元/百万Token)</th>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px; border:1px solid #ddd;">[0, 32K)</td>
+                                <td style="padding:8px; border:1px solid #ddd;">6</td>
+                                <td style="padding:8px; border:1px solid #ddd;">24 (限时免费)</td>
+                                <td style="padding:8px; border:1px solid #ddd;">1.3</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px; border:1px solid #ddd;">[32K, +∞)</td>
+                                <td style="padding:8px; border:1px solid #ddd;">8</td>
+                                <td style="padding:8px; border:1px solid #ddd;">28 (限时免费)</td>
+                                <td style="padding:8px; border:1px solid #ddd;">2</td>
+                            </tr>
+                        </table>
+                        <p style="font-size:12px; color:#666; margin-top:8px;">* 输出价格当前限时免费，工具默认按正式价格计算（可手动改为0）</p>
+                    </div>
+                    
+                    <div class="price-config" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                         <div class="price-input-group">
-                            <label>输入Token价格 <span class="unit">(元/百万Token)</span></label>
-                            <input type="number" id="inputPrice" value="6" step="0.01" min="0">
+                            <label>短输入价格 <span class="unit">(&lt;32K, 元/百万Token)</span></label>
+                            <input type="number" id="inputPriceShort" value="6" step="0.01" min="0">
                         </div>
                         
                         <div class="price-input-group">
-                            <label>输出Token价格 <span class="unit">(元/百万Token)</span></label>
-                            <input type="number" id="outputPrice" value="22" step="0.01" min="0">
+                            <label>长输入价格 <span class="unit">(≥32K, 元/百万Token)</span></label>
+                            <input type="number" id="inputPriceLong" value="8" step="0.01" min="0">
                         </div>
                         
                         <div class="price-input-group">
-                            <label>Cache Token价格 <span class="unit">(元/百万Token)</span></label>
-                            <input type="number" id="cachePrice" value="1.5" step="0.01" min="0">
+                            <label>短输出价格 <span class="unit">(&lt;32K, 元/百万Token)</span></label>
+                            <input type="number" id="outputPriceShort" value="24" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="price-input-group">
+                            <label>长输出价格 <span class="unit">(≥32K, 元/百万Token)</span></label>
+                            <input type="number" id="outputPriceLong" value="28" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="price-input-group">
+                            <label>短缓存价格 <span class="unit">(&lt;32K, 元/百万Token)</span></label>
+                            <input type="number" id="cachePriceShort" value="1.3" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="price-input-group">
+                            <label>长缓存价格 <span class="unit">(≥32K, 元/百万Token)</span></label>
+                            <input type="number" id="cachePriceLong" value="2" step="0.01" min="0">
                         </div>
                     </div>
                     
@@ -537,7 +578,7 @@
             </div>
             
             <!-- 结果展示 -->
-               <!-- 最终点数 -->
+               <!-- 最终点数及客户花费 -->
                 <div class="highlight" id="totalPointsSection">
                     <h3>消耗点数总计</h3>
                     <div class="big-number" id="totalPoints">0</div>
@@ -562,7 +603,7 @@
                 
                 <!-- 成本计算结果 -->
                 <div class="result-section">
-                    <h4>💵 成本计算结果</h4>
+                    <h4>💵 大模型成本计算结果</h4>
                     <div class="result-grid" id="costGrid"></div>
                 </div>
             
@@ -753,9 +794,14 @@
         
         // 主计算函数
         function calculateAndDisplay() {
-            const inputPrice = parseFloat(document.getElementById('inputPrice').value) || 6;
-            const outputPrice = parseFloat(document.getElementById('outputPrice').value) || 22;
-            const cachePrice = parseFloat(document.getElementById('cachePrice').value) || 1.5;
+            const priceConfig = {
+                inputPriceShort: parseFloat(document.getElementById('inputPriceShort').value) || 6,
+                inputPriceLong: parseFloat(document.getElementById('inputPriceLong').value) || 8,
+                outputPriceShort: parseFloat(document.getElementById('outputPriceShort').value) || 24,
+                outputPriceLong: parseFloat(document.getElementById('outputPriceLong').value) || 28,
+                cachePriceShort: parseFloat(document.getElementById('cachePriceShort').value) || 1.3,
+                cachePriceLong: parseFloat(document.getElementById('cachePriceLong').value) || 2
+            };
             
             // 检查描述是否填写
             const description = document.getElementById('sessionDescription').value.trim();
@@ -765,23 +811,23 @@
                 return;
             }
             
-            // 解析traces并聚合
+            // 解析traces并聚合（带分段定价信息）
             const turnData = parseTraces(parsedData.traces);
             
             // 计算总量
             const totals = calculateTotals(turnData);
             
-            // 计算成本和点数
-            const costResult = calculateCost(totals, inputPrice, outputPrice, cachePrice);
+            // 计算成本和点数（分段定价）
+            const costResult = calculateCostSegmented(totals, turnData, priceConfig);
             
             // 提取模型信息
             const models = extractModels(parsedData.traces);
             
             // 显示结果
-            displayResults(totals, costResult, turnData, inputPrice, outputPrice, cachePrice);
+            displayResults(totals, costResult, turnData, priceConfig);
             
             // 保存记录到GitHub
-            saveRecordToGitHub(description, totals, costResult, models, inputPrice, outputPrice, cachePrice);
+            saveRecordToGitHub(description, totals, costResult, models, priceConfig);
             
             // 显示结果区域
             results.classList.add('show');
@@ -804,10 +850,58 @@
             return Array.from(models).join(', ') || 'glm-5';
         }
         
-        // 保存记录到GitHub
-        async function saveRecordToGitHub(description, totals, costResult, models, inputPrice, outputPrice, cachePrice) {
+        // 保存记录到GitHub（优先使用Netlify Function代理，fallback到直接GitHub API）
+        async function saveRecordToGitHub(description, totals, costResult, models, priceConfig) {
+            // 生成记录行
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).replace(/\//g, '-');
+            
+            const sessionId = parsedData.session_id[0] || 'unknown';
+            const costLow = (costResult.totalPoints * 0.18).toFixed(2);
+            const costHigh = (costResult.totalPoints * 0.2).toFixed(2);
+            
+            // 价格显示：短/长
+            const inputPriceStr = `¥${priceConfig.inputPriceShort}/${priceConfig.inputPriceLong}`;
+            const outputPriceStr = `¥${priceConfig.outputPriceShort}/${priceConfig.outputPriceLong}`;
+            const cachePriceStr = `¥${priceConfig.cachePriceShort}/${priceConfig.cachePriceLong}`;
+            
+            const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
+            
+            // 优先尝试 Netlify Function
             try {
-                // 获取当前文件内容
+                const fnResponse = await fetch('/api/save-record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ record: newRecord, description: description })
+                });
+                
+                if (fnResponse.ok) {
+                    const result = await fnResponse.json();
+                    console.log('通过Netlify Function保存成功:', result);
+                    showSaveStatus('success', '✅ 记录已自动保存到 GitHub records.md');
+                    return;
+                }
+                
+                // 如果Netlify Function返回非200，尝试fallback
+                console.warn('Netlify Function返回非200，尝试直接GitHub API');
+            } catch (e) {
+                // Netlify Function不可用（本地开发等），尝试fallback
+                console.warn('Netlify Function不可用，尝试直接GitHub API:', e.message);
+            }
+            
+            // Fallback: 直接使用GitHub API（需要URL中带token参数）
+            if (!GITHUB_CONFIG.token) {
+                showSaveStatus('warning', '未配置Token，记录未保存。部署到Netlify后会自动通过Function保存');
+                return;
+            }
+            
+            try {
                 const getUrl = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
                 
                 const getResponse = await fetch(getUrl, {
@@ -818,35 +912,15 @@
                 });
                 
                 if (!getResponse.ok) {
-                    console.error('获取文件失败');
+                    showSaveStatus('error', '获取GitHub文件失败');
                     return;
                 }
                 
                 const fileData = await getResponse.json();
                 const sha = fileData.sha;
                 let content = atob(fileData.content);
-                
-                // 生成新记录行
-                const now = new Date();
-                const timeStr = now.toLocaleString('zh-CN', { 
-                    year: 'numeric', 
-                    month: '2-digit', 
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }).replace(/\//g, '-');
-                
-                const sessionId = parsedData.session_id[0] || 'unknown';
-                const costLow = (costResult.totalPoints * 0.18).toFixed(2);
-                const costHigh = (costResult.totalPoints * 0.2).toFixed(2);
-                
-                const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ¥${inputPrice} | ¥${outputPrice} | ¥${cachePrice} | ¥${costResult.totalCost.toFixed(2)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |
-`;
-                
-                // 追加新记录
                 content += newRecord;
                 
-                // 更新文件
                 const updateResponse = await fetch(getUrl, {
                     method: 'PUT',
                     headers: {
@@ -855,20 +929,52 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: `添加Session记录: ${description}`,
+                        message: `添加Session记录: ${description} (${timeStr})`,
                         content: btoa(unescape(encodeURIComponent(content))),
                         sha: sha
                     })
                 });
                 
                 if (updateResponse.ok) {
-                    console.log('记录已保存到GitHub');
+                    showSaveStatus('success', '✅ 记录已自动保存到 GitHub records.md');
                 } else {
-                    console.error('保存记录失败');
+                    const errData = await updateResponse.json();
+                    showSaveStatus('error', '保存失败: ' + (errData.message || '未知错误'));
                 }
             } catch (error) {
-                console.error('保存记录出错:', error);
+                showSaveStatus('error', '保存出错: ' + error.message);
             }
+        }
+        
+        // 显示保存状态
+        function showSaveStatus(type, message) {
+            let statusEl = document.getElementById('saveStatus');
+            if (!statusEl) {
+                statusEl = document.createElement('div');
+                statusEl.id = 'saveStatus';
+                statusEl.style.cssText = 'text-align:center; padding:12px; border-radius:8px; margin-top:15px; font-size:14px; transition:opacity 0.3s;';
+                document.getElementById('totalPointsSection').after(statusEl);
+            }
+            
+            if (type === 'success') {
+                statusEl.style.background = '#d4edda';
+                statusEl.style.color = '#155724';
+                statusEl.style.border = '1px solid #c3e6cb';
+            } else if (type === 'error') {
+                statusEl.style.background = '#f8d7da';
+                statusEl.style.color = '#721c24';
+                statusEl.style.border = '1px solid #f5c6cb';
+            } else {
+                statusEl.style.background = '#fff3cd';
+                statusEl.style.color = '#856404';
+                statusEl.style.border = '1px solid #ffc107';
+            }
+            
+            statusEl.textContent = message;
+            statusEl.style.opacity = '1';
+            
+            // 5秒后淡出
+            setTimeout(() => { statusEl.style.opacity = '0.6'; }, 5000);
         }
         
         // 格式化Token数量
@@ -978,31 +1084,66 @@
             });
         }
         
-        // 计算成本和点数
-        function calculateCost(totals, inputPrice, outputPrice, cachePrice) {
-            // 第一步:计算实际成本
-            const inputCost = (totals.input_tokens * inputPrice) / 1000000;
-            const outputCost = (totals.output_tokens * outputPrice) / 1000000;
-            const cacheCost = (totals.cache_tokens * cachePrice) / 1000000;
-            const totalCost = inputCost + outputCost + cacheCost;
+        // 计算成本和点数（分段定价：根据每个turn的输入token数判断用短/长价格）
+        function calculateCostSegmented(totals, turnData, priceConfig) {
+            const THRESHOLD = 32000; // 32K token分界线
+            
+            let totalInputCost = 0;
+            let totalOutputCost = 0;
+            let totalCacheCost = 0;
+            
+            // 按每个turn的输入长度判断使用哪个价格档位
+            turnData.forEach(turn => {
+                const isLong = turn.input_tokens >= THRESHOLD;
+                const inputPrice = isLong ? priceConfig.inputPriceLong : priceConfig.inputPriceShort;
+                const outputPrice = isLong ? priceConfig.outputPriceLong : priceConfig.outputPriceShort;
+                const cachePrice = isLong ? priceConfig.cachePriceLong : priceConfig.cachePriceShort;
+                
+                totalInputCost += (turn.input_tokens * inputPrice) / 1000000;
+                totalOutputCost += (turn.output_tokens * outputPrice) / 1000000;
+                totalCacheCost += (turn.cache_tokens * cachePrice) / 1000000;
+                
+                // 存储每个turn使用的价格档位
+                turn.priceLevel = isLong ? 'long' : 'short';
+                turn.usedInputPrice = inputPrice;
+                turn.usedOutputPrice = outputPrice;
+                turn.usedCachePrice = cachePrice;
+            });
+            
+            const totalCost = totalInputCost + totalOutputCost + totalCacheCost;
             
             // 第二步:计算点数 (1点 = ¥0.06)
             const totalPoints = totalCost / 0.06;
             
+            // 计算加权平均价格（用于显示）
+            const avgInputPrice = totals.input_tokens > 0 ? (totalInputCost * 1000000 / totals.input_tokens) : priceConfig.inputPriceShort;
+            const avgOutputPrice = totals.output_tokens > 0 ? (totalOutputCost * 1000000 / totals.output_tokens) : priceConfig.outputPriceShort;
+            const avgCachePrice = totals.cache_tokens > 0 ? (totalCacheCost * 1000000 / totals.cache_tokens) : priceConfig.cachePriceShort;
+            
             return {
-                inputCost,
-                outputCost,
-                cacheCost,
+                inputCost: totalInputCost,
+                outputCost: totalOutputCost,
+                cacheCost: totalCacheCost,
                 totalCost,
                 totalPoints,
-                inputCoefficient: inputPrice / 6,  // 相对于GLM-5基准价
-                outputCoefficient: outputPrice / 6,
-                cacheCoefficient: cachePrice / 6
+                avgInputPrice,
+                avgOutputPrice,
+                avgCachePrice
             };
         }
         
+        // 保留旧函数兼容
+        function calculateCost(totals, inputPrice, outputPrice, cachePrice) {
+            const inputCost = (totals.input_tokens * inputPrice) / 1000000;
+            const outputCost = (totals.output_tokens * outputPrice) / 1000000;
+            const cacheCost = (totals.cache_tokens * cachePrice) / 1000000;
+            const totalCost = inputCost + outputCost + cacheCost;
+            const totalPoints = totalCost / 0.06;
+            return { inputCost, outputCost, cacheCost, totalCost, totalPoints };
+        }
+        
         // 显示结果
-        function displayResults(totals, costResult, turnData, inputPrice, outputPrice, cachePrice) {
+        function displayResults(totals, costResult, turnData, priceConfig) {
             // Session概览
             document.getElementById('overviewGrid').innerHTML = `
                 <div class="result-item">
@@ -1052,21 +1193,22 @@
                 <div class="result-item">
                     <div class="label">输入成本</div>
                     <div class="value cost">¥${costResult.inputCost.toFixed(4)}</div>
-                    <div class="detail">¥${inputPrice}/M × ${(totals.input_tokens/1000000).toFixed(3)}M</div>
+                    <div class="detail">加权均价 ¥${costResult.avgInputPrice.toFixed(2)}/M × ${(totals.input_tokens/1000000).toFixed(3)}M</div>
                 </div>
                 <div class="result-item">
                     <div class="label">输出成本</div>
                     <div class="value cost">¥${costResult.outputCost.toFixed(4)}</div>
-                    <div class="detail">¥${outputPrice}/M × ${(totals.output_tokens/1000000).toFixed(3)}M</div>
+                    <div class="detail">加权均价 ¥${costResult.avgOutputPrice.toFixed(2)}/M × ${(totals.output_tokens/1000000).toFixed(3)}M</div>
                 </div>
                 <div class="result-item">
                     <div class="label">Cache成本</div>
                     <div class="value cost">¥${costResult.cacheCost.toFixed(4)}</div>
-                    <div class="detail">¥${cachePrice}/M × ${(totals.cache_tokens/1000000).toFixed(3)}M</div>
+                    <div class="detail">加权均价 ¥${costResult.avgCachePrice.toFixed(2)}/M × ${(totals.cache_tokens/1000000).toFixed(3)}M</div>
                 </div>
                 <div class="result-item">
                     <div class="label">总成本</div>
                     <div class="value cost">¥${costResult.totalCost.toFixed(4)}</div>
+                    <div class="detail">分段定价: &lt;32K用短价, ≥32K用长价</div>
                 </div>
             `;
             
@@ -1078,10 +1220,10 @@
             // Turn明细表
             const turnTableBody = document.getElementById('turnTableBody');
             turnTableBody.innerHTML = turnData.map(turn => {
-                const turnCost = calculateTurnCost(turn, inputPrice, outputPrice, cachePrice);
+                const turnCost = calculateTurnCostSegmented(turn);
                 return `
                     <tr>
-                        <td>${turn.turn}</td>
+                        <td>${turn.turn} ${turn.priceLevel === 'long' ? '<span style="color:#e67e22;font-size:11px;">长</span>' : ''}</td>
                         <td>${turn.llm_calls}</td>
                         <td>${turn.tool_calls}</td>
                         <td>${formatNumber(turn.input_tokens)}</td>
@@ -1110,10 +1252,19 @@
             `;
             
             // 业务vs调试分析建议
-            generateAnalysis(totals, turnData);
+            generateAnalysis(totals, turnData, priceConfig);
         }
         
-        // 计算单个turn的成本
+        // 计算单个turn的成本（使用分段定价后存储的价格）
+        function calculateTurnCostSegmented(turn) {
+            const cost = (turn.input_tokens * turn.usedInputPrice + 
+                         turn.output_tokens * turn.usedOutputPrice + 
+                         turn.cache_tokens * turn.usedCachePrice) / 1000000;
+            const points = cost / 0.06;
+            return { cost, points };
+        }
+        
+        // 保留旧函数兼容
         function calculateTurnCost(turn, inputPrice, outputPrice, cachePrice) {
             const cost = (turn.input_tokens * inputPrice + 
                          turn.output_tokens * outputPrice + 
@@ -1123,7 +1274,7 @@
         }
         
         // 生成分析建议
-        function generateAnalysis(totals, turnData) {
+        function generateAnalysis(totals, turnData, priceConfig) {
             const analysisContent = document.getElementById('analysisContent');
             
             // 识别可疑turn
@@ -1191,7 +1342,7 @@
                 <div class="info-box">
                     <h4>💡 成本优化建议</h4>
                     <ul>
-                        <li><strong>利用Cache:</strong> Cache成本仅为输入的${((parseFloat(document.getElementById('cachePrice').value) / parseFloat(document.getElementById('inputPrice').value)) * 100).toFixed(0)}%,应尽量复用上下文</li>
+                        <li><strong>利用Cache:</strong> Cache成本仅为输入的${((priceConfig.cachePriceShort / priceConfig.inputPriceShort) * 100).toFixed(0)}%,应尽量复用上下文</li>
                         <li><strong>减少重试:</strong> 每次重试都会产生完整成本,建议优化prompt和工具调用逻辑</li>
                         <li><strong>选择合适模型:</strong> 简单任务可使用低成本模型,复杂任务才使用高端模型</li>
                         <li><strong>精简上下文:</strong> 避免在context中传递过多历史信息,按需裁剪</li>
@@ -1214,5 +1365,4 @@
         }
     </script>
 </body>
-</html>
 </html>
