@@ -751,6 +751,9 @@
                 // 合并数据
                 parsedData = mergeSessionData(allData);
                 
+                // 自动填充描述信息（取第一个trace的用户输入）
+                autoFillDescription();
+                
                 // 计算
                 calculateAndDisplay();
                 
@@ -790,6 +793,77 @@
             });
             
             return merged;
+        }
+        
+        // 自动填充描述信息：取第一个trace（turn_index最小）的用户输入
+        function autoFillDescription() {
+            const descInput = document.getElementById('sessionDescription');
+            // 如果用户已经手动填写了，不覆盖
+            if (descInput.value.trim()) return;
+            
+            if (!parsedData || !parsedData.traces || parsedData.traces.length === 0) return;
+            
+            // 找到turn_index最小的trace
+            let firstTrace = null;
+            let minTurnIndex = Infinity;
+            
+            parsedData.traces.forEach(traceData => {
+                const trace = traceData.trace || traceData;
+                
+                // 从metadata中提取turn_index
+                let turnIndex = Infinity;
+                let metadata = null;
+                
+                if (trace.metadata) {
+                    try {
+                        metadata = typeof trace.metadata === 'string' ? JSON.parse(trace.metadata) : trace.metadata;
+                        if (metadata.turn_index !== undefined) {
+                            turnIndex = metadata.turn_index;
+                        }
+                    } catch (e) {}
+                }
+                
+                // fallback: 从name中提取turn编号
+                if (turnIndex === Infinity && trace.name) {
+                    const match = trace.name.match(/turn[_\s]*(\d+)/i);
+                    if (match) {
+                        turnIndex = parseInt(match[1]);
+                    }
+                }
+                
+                if (turnIndex < minTurnIndex) {
+                    minTurnIndex = turnIndex;
+                    firstTrace = { trace, metadata };
+                }
+            });
+            
+            if (!firstTrace) return;
+            
+            // 提取用户输入作为描述
+            let userInput = '';
+            
+            // 优先从trace.input获取
+            if (firstTrace.trace.input) {
+                userInput = firstTrace.trace.input;
+                // 去掉首尾引号
+                if (userInput.startsWith('"') && userInput.endsWith('"')) {
+                    userInput = userInput.slice(1, -1);
+                }
+            }
+            
+            // fallback: 从metadata.prompt_preview获取
+            if (!userInput && firstTrace.metadata && firstTrace.metadata.prompt_preview) {
+                userInput = firstTrace.metadata.prompt_preview;
+            }
+            
+            // 截断过长的描述（最多60字符）
+            if (userInput.length > 60) {
+                userInput = userInput.substring(0, 60) + '...';
+            }
+            
+            if (userInput) {
+                descInput.value = userInput;
+            }
         }
         
         // 主计算函数
