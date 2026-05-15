@@ -518,7 +518,8 @@
                     </p>
                     
                     <div class="info-box" style="margin-bottom: 20px;">
-                        <h4>📋 GLM-5.1新品价格表</h4>
+                        <h4>📋 GLM-5.1新品价格表（默认）</h4>
+                        <p style="color:#e67e22; font-size:13px; margin-bottom:10px;">⚠️ 当前默认按 GLM-5.1 价格计算，如trace中使用了其他模型请手动调整价格</p>
                         <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:14px;">
                             <tr style="background:#f0f4ff;">
                                 <th style="padding:8px; border:1px solid #ddd;">输入长度</th>
@@ -952,7 +953,7 @@
             const outputPriceStr = `¥${priceConfig.outputPriceShort}/${priceConfig.outputPriceLong}`;
             const cachePriceStr = `¥${priceConfig.cachePriceShort}/${priceConfig.cachePriceLong}`;
             
-            const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
+            const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | GLM-5.1定价 | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
             
             // 优先尝试 Netlify Function
             try {
