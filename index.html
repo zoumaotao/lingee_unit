@@ -940,7 +940,7 @@
             return Array.from(models).join(', ') || 'glm-5';
         }
         
-        // 保存记录到GitHub（优先使用Netlify Function代理，fallback到直接GitHub API）
+        // 保存记录到GitHub（直接调用GitHub API）
         async function saveRecordToGitHub(description, totals, costResult, models, priceConfig) {
             // 生成记录行
             const now = new Date();
@@ -963,31 +963,8 @@
             
             const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | GLM-5.1定价 | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
             
-            // 优先尝试 Netlify Function
-            try {
-                const fnResponse = await fetch('/api/save-record', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ record: newRecord, description: description })
-                });
-                
-                if (fnResponse.ok) {
-                    const result = await fnResponse.json();
-                    console.log('通过Netlify Function保存成功:', result);
-                    showSaveStatus('success', '✅ 记录已自动保存到 GitHub records.md');
-                    return;
-                }
-                
-                // 如果Netlify Function返回非200，尝试fallback
-                console.warn('Netlify Function返回非200，尝试直接GitHub API');
-            } catch (e) {
-                // Netlify Function不可用（本地开发等），尝试fallback
-                console.warn('Netlify Function不可用，尝试直接GitHub API:', e.message);
-            }
-            
-            // Fallback: 直接使用GitHub API（需要URL中带token参数）
             if (!GITHUB_CONFIG.token) {
-                showSaveStatus('warning', '未配置Token，记录未保存。部署到Netlify后会自动通过Function保存');
+                showSaveStatus('warning', '未配置Token，记录未保存。请在URL中添加 ?token=xxx 参数');
                 return;
             }
             
