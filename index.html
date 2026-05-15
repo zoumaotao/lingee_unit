@@ -477,7 +477,7 @@
             <!-- 步骤2: 上传文件 -->
             <div class="step">
                 <span class="step-number">2</span>
-                <h3>上传文件</h3>
+                <h3>业务信息及Session&Trace上传</h3>
                 <div class="step-content">
                     <div class="info-box" style="background: #fff3cd; border-color: #ffc107;">
                         <h4 style="color: #856404;">👤 请填写测算人姓名</h4>
@@ -506,7 +506,7 @@
                     </div>
                     <!-- 计算与清空按钮 -->
                     <div class="btn-container" style="margin-top: 20px;">
-                        <button class="calculate-btn" id="clearBtn" style="background: #6c757d;">清空文件</button>
+                        <button class="calculate-btn" id="clearBtn" style="background: #6c757d;">清空文件及其他补充信息</button>
                         <button class="calculate-btn" id="calculateBtn" disabled>开始计算</button>
                     </div>
             
@@ -749,8 +749,10 @@
             updateFileList();
             updateCalculateButton();
             results.classList.remove('show');
-            // 重置文件输入
+            // 重置文件输入和补充信息
             fileInput.value = '';
+            document.getElementById('analystName').value = '';
+            document.getElementById('sessionDescription').value = '';
         });
         
         // 计算按钮点击
