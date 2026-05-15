@@ -914,12 +914,19 @@
             const models = new Set();
             traces.forEach(traceData => {
                 const trace = traceData.trace || traceData;
-                const observations = traceData.observations || [];
+                const observations = traceData.observations || trace.observations || [];
                 observations.forEach(obs => {
                     if (obs.type === 'GENERATION' && obs.model) {
                         models.add(obs.model);
                     }
                 });
+                // fallback: 从metadata中提取model_id
+                if (trace.metadata) {
+                    try {
+                        const meta = typeof trace.metadata === 'string' ? JSON.parse(trace.metadata) : trace.metadata;
+                        if (meta.model_id) models.add(meta.model_id);
+                    } catch (e) {}
+                }
             });
             return Array.from(models).join(', ') || 'glm-5';
         }
