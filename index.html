@@ -989,7 +989,9 @@
                 
                 const fileData = await getResponse.json();
                 const sha = fileData.sha;
-                let content = decodeURIComponent(escape(atob(fileData.content)));
+                // GitHub API返回的base64有换行符，需要去掉再解码
+                const rawBase64 = fileData.content.replace(/\n/g, '');
+                let content = decodeURIComponent(escape(atob(rawBase64)));
                 content += newRecord;
                 
                 const updateResponse = await fetch(getUrl, {
