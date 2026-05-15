@@ -581,13 +581,17 @@
             <!-- 结果展示 -->
                <!-- 最终点数及客户花费 -->
                 <div class="highlight" id="totalPointsSection">
-                    <h3>消耗点数总计</h3>
-                    <div class="big-number" id="totalPoints">0</div>
-                    <span class="unit">点</span>
-                    <p style="margin-top: 15px; font-size: 14px; opacity: 0.9;">
-                        客户花费: ¥<span id="totalCostLow">0.00</span> - ¥<span id="totalCostHigh">0.00</span>
-                        <br><span style="font-size: 12px; opacity: 0.8;">(按点数售价 ¥0.18-0.2/点 计算)</span>
-                    </p>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 60px; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 16px; opacity: 0.9; margin-bottom: 8px;">消耗点数</div>
+                            <div style="font-size: 36px; font-weight: bold;"><span id="totalPoints">0</span> <span style="font-size: 20px;">点</span></div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 16px; opacity: 0.9; margin-bottom: 8px;">客户花费</div>
+                            <div style="font-size: 36px; font-weight: bold;">¥<span id="totalCostLow">0.00</span> - ¥<span id="totalCostHigh">0.00</span></div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">(按点数售价 ¥0.18-0.2/点 计算)</div>
+                        </div>
+                    </div>
                 </div>
             <div class="results" id="results">
                 <!-- Session概览 -->
