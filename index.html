@@ -989,7 +989,7 @@
                 
                 const fileData = await getResponse.json();
                 const sha = fileData.sha;
-                let content = atob(fileData.content);
+                let content = decodeURIComponent(escape(atob(fileData.content)));
                 content += newRecord;
                 
                 const updateResponse = await fetch(getUrl, {
