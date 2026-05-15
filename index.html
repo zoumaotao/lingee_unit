@@ -522,12 +522,21 @@
                 <div class="step-content">
                     <p style="margin-bottom: 15px; color: #666;">
                         消耗点数通过 (输入token数 × 输入系数 + 输出token数 × 输出系数 + cache token数 × cache系数) 加权得出。<br>
-                        默认使用 <strong>GLM-5.1新品</strong> 价格（分段定价：输入长度&lt;32K用短输入价，≥32K用长输入价）。
+                        选择计价模型后价格会自动填充，也可手动修改。
                     </p>
                     
-                    <div class="info-box" style="margin-bottom: 20px;">
-                        <h4>📋 GLM-5.1新品价格表（默认）</h4>
-                        <p style="color:#e67e22; font-size:13px; margin-bottom:10px;">⚠️ 当前默认按 GLM-5.1 价格计算，如trace中使用了其他模型请手动调整价格</p>
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-weight:600; margin-right:10px;">计价模型：</label>
+                        <select id="modelSelect" style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; min-width:200px;">
+                            <option value="glm-5.1" selected>GLM-5.1新品（分段定价）</option>
+                            <option value="custom">其他模型（自定义）</option>
+                        </select>
+                        <input type="text" id="customModelName" placeholder="请输入模型名称" 
+                            style="display:none; margin-left:10px; padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; width:200px;">
+                    </div>
+                    
+                    <div class="info-box" style="margin-bottom: 20px;" id="glmPriceTable">
+                        <h4>📋 GLM-5.1新品价格表</h4>
                         <table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:14px;">
                             <tr style="background:#f0f4ff;">
                                 <th style="padding:8px; border:1px solid #ddd;">输入长度</th>
@@ -755,6 +764,33 @@
             document.getElementById('sessionDescription').value = '';
         });
         
+        // 模型选择切换
+        document.getElementById('modelSelect').addEventListener('change', function() {
+            const customInput = document.getElementById('customModelName');
+            const priceTable = document.getElementById('glmPriceTable');
+            if (this.value === 'custom') {
+                customInput.style.display = 'inline-block';
+                priceTable.style.display = 'none';
+                // 清空价格让用户自己填
+                document.getElementById('inputPriceShort').value = '';
+                document.getElementById('inputPriceLong').value = '';
+                document.getElementById('outputPriceShort').value = '';
+                document.getElementById('outputPriceLong').value = '';
+                document.getElementById('cachePriceShort').value = '';
+                document.getElementById('cachePriceLong').value = '';
+            } else {
+                customInput.style.display = 'none';
+                priceTable.style.display = 'block';
+                // 恢复GLM-5.1默认价格
+                document.getElementById('inputPriceShort').value = '6';
+                document.getElementById('inputPriceLong').value = '8';
+                document.getElementById('outputPriceShort').value = '24';
+                document.getElementById('outputPriceLong').value = '28';
+                document.getElementById('cachePriceShort').value = '1.3';
+                document.getElementById('cachePriceLong').value = '2';
+            }
+        });
+        
         // 计算按钮点击
         calculateBtn.addEventListener('click', async () => {
             if (uploadedFiles.length === 0) return;
@@ -932,7 +968,8 @@
             displayResults(totals, costResult, turnData, priceConfig);
             
             // 保存记录到GitHub
-            saveRecordToGitHub(analystName, description, totals, costResult, models, priceConfig);
+            const pricingModel = getPricingModelName();
+            saveRecordToGitHub(analystName, description, totals, costResult, models, pricingModel, priceConfig);
             
             // 显示结果区域
             results.classList.add('show');
@@ -962,8 +999,17 @@
             return Array.from(models).join(', ') || 'glm-5';
         }
         
+        // 获取用户选择的计价模型名称
+        function getPricingModelName() {
+            const select = document.getElementById('modelSelect');
+            if (select.value === 'custom') {
+                return document.getElementById('customModelName').value.trim() || '自定义模型';
+            }
+            return 'GLM-5.1';
+        }
+        
         // 保存记录到GitHub（直接调用GitHub API）
-        async function saveRecordToGitHub(analystName, description, totals, costResult, models, priceConfig) {
+        async function saveRecordToGitHub(analystName, description, totals, costResult, models, pricingModel, priceConfig) {
             // 生成记录行
             const now = new Date();
             const timeStr = now.toLocaleString('zh-CN', { 
@@ -983,7 +1029,7 @@
             const outputPriceStr = `¥${priceConfig.outputPriceShort}/${priceConfig.outputPriceLong}`;
             const cachePriceStr = `¥${priceConfig.cachePriceShort}/${priceConfig.cachePriceLong}`;
             
-            const newRecord = `| ${timeStr} | ${analystName} | ${description} | ${sessionId} | ${models} | GLM-5.1定价 | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
+            const newRecord = `| ${timeStr} | ${analystName} | ${description} | ${sessionId} | ${models} | ${pricingModel} | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
             
             if (!GITHUB_CONFIG.token) {
                 showSaveStatus('warning', '未配置Token，记录未保存。请在URL中添加 ?token=xxx 参数');
