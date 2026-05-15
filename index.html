@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Langfuse Session 成本测算工具</title>
+    <title>Langfuse Session 点数消耗测算工具</title>
     <style>
         * {
             margin: 0;
@@ -480,6 +480,14 @@
                 <h3>上传文件</h3>
                 <div class="step-content">
                     <div class="info-box" style="background: #fff3cd; border-color: #ffc107;">
+                        <h4 style="color: #856404;">👤 请填写测算人姓名</h4>
+                        <p style="color: #856404; margin-top: 8px;">
+                            <input type="text" id="analystName" placeholder="请输入真实姓名" 
+                                style="width: 100%; padding: 10px; border: 1px solid #ffc107; border-radius: 6px; font-size: 14px;">
+                        </p>
+                    </div>
+                    
+                    <div class="info-box" style="background: #fff3cd; border-color: #ffc107; margin-top: 15px;">
                         <h4 style="color: #856404;">📝 请先输入描述信息</h4>
                         <p style="color: #856404; margin-top: 8px;">
                             <input type="text" id="sessionDescription" placeholder="如：报销Session、问数Session、财务分析Session" 
@@ -890,6 +898,14 @@
                 cachePriceLong: parseFloat(document.getElementById('cachePriceLong').value) || 2
             };
             
+            // 检查姓名是否填写
+            const analystName = document.getElementById('analystName').value.trim();
+            if (!analystName) {
+                alert('请先填写测算人姓名');
+                document.getElementById('analystName').focus();
+                return;
+            }
+            
             // 检查描述是否填写
             const description = document.getElementById('sessionDescription').value.trim();
             if (!description) {
@@ -914,7 +930,7 @@
             displayResults(totals, costResult, turnData, priceConfig);
             
             // 保存记录到GitHub
-            saveRecordToGitHub(description, totals, costResult, models, priceConfig);
+            saveRecordToGitHub(analystName, description, totals, costResult, models, priceConfig);
             
             // 显示结果区域
             results.classList.add('show');
@@ -945,7 +961,7 @@
         }
         
         // 保存记录到GitHub（直接调用GitHub API）
-        async function saveRecordToGitHub(description, totals, costResult, models, priceConfig) {
+        async function saveRecordToGitHub(analystName, description, totals, costResult, models, priceConfig) {
             // 生成记录行
             const now = new Date();
             const timeStr = now.toLocaleString('zh-CN', { 
@@ -965,7 +981,7 @@
             const outputPriceStr = `¥${priceConfig.outputPriceShort}/${priceConfig.outputPriceLong}`;
             const cachePriceStr = `¥${priceConfig.cachePriceShort}/${priceConfig.cachePriceLong}`;
             
-            const newRecord = `| ${timeStr} | ${description} | ${sessionId} | ${models} | GLM-5.1定价 | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
+            const newRecord = `| ${timeStr} | ${analystName} | ${description} | ${sessionId} | ${models} | GLM-5.1定价 | ${totals.turn_count} | ${totals.llm_calls} | ${totals.tool_calls} | ${formatTokenCount(totals.total_tokens)} | ${formatTokenCount(totals.input_tokens)} | ${formatTokenCount(totals.output_tokens)} | ${formatTokenCount(totals.cache_tokens)} | ${inputPriceStr} | ${outputPriceStr} | ${cachePriceStr} | ¥${costResult.totalCost.toFixed(4)} | ${costResult.totalPoints.toFixed(2)} | ¥${costLow}-${costHigh} |\n`;
             
             if (!GITHUB_CONFIG.token) {
                 showSaveStatus('warning', '未配置Token，记录未保存。请在URL中添加 ?token=xxx 参数');
