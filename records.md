@@ -11,3 +11,4 @@
 | 2026-05-15 14:11 | @法规政策解读\n\nA document attachment was detected: \"人工智能科技伦理审查与... | unknown | glm-5.1 | GLM-5.1定价 | 1 | 37 | 41 | 2.47M | 1.57M | 16.9K | 881.3K | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥14.7890 | 246.48 | ¥44.37-49.30 |
 | 2026-05-15 14:12 | @合同智能审查\n\nA document attachment was detected: \"软件合同.docx\"... | unknown | glm-5.1-biz | GLM-5.1定价 | 1 | 17 | 20 | 1.65M | 1.64M | 13.8K | 0 | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥13.5051 | 225.08 | ¥40.52-45.02 |
 | 2026-05-15 14:15 | Assistant mode activated for 费用报销智能体 (expense-reimbursement)... | ses_27a168fdfffeon0A4aXalzKEmd | glm-5 | GLM-5.1定价 | 8 | 23 | 22 | 1.24M | 419.0K | 10.8K | 809.1K | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥5.0437 | 84.06 | ¥15.13-16.81 |
+| 2026-05-15 14:19 | Assistant mode activated for 费用报销智能体 (expense-reimbursement)... | ses_27a168fdfffeon0A4aXalzKEmd | glm-5 | GLM-5.1定价 | 8 | 23 | 22 | 1.24M | 419.0K | 10.8K | 809.1K | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥5.0437 | 84.06 | ¥15.13-16.81 |
