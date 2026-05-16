@@ -1177,17 +1177,36 @@
         function parseTraces(traces) {
             const turnMap = new Map();
             
+            let turnCounter = 0; // 用于没有turn标识的情况
+            
             traces.forEach(traceData => {
                 // 获取trace对象
                 const trace = traceData.trace || traceData;
+                
+                // 从observations中提取数据（先提取，再判断是否有效）
+                const observations = traceData.observations || trace.observations || [];
+                
+                // 统计LLM调用次数(GENERATION类型)
+                const generations = observations.filter(o => o.type === 'GENERATION');
+                const llm_calls = generations.length;
+                
+                // 统计Tool调用次数(TOOL类型)
+                const tools = observations.filter(o => o.type === 'TOOL');
+                const tool_calls = tools.length;
+                
+                // 如果没有任何调用，跳过这个trace(可能是session级别的空trace)
+                if (llm_calls === 0 && tool_calls === 0) {
+                    return;
+                }
                 
                 // 尝试提取turn编号
                 const turnMatch = trace.name?.match(/turn[_\s]*(\d+|\?)/i);
                 let turnKey = turnMatch ? turnMatch[1] : null;
                 
-                // 如果没有turn信息,跳过这个trace(可能是session级别的空trace)
+                // 如果没有turn标识，使用自增序号
                 if (!turnKey) {
-                    return;
+                    turnCounter++;
+                    turnKey = turnCounter.toString();
                 }
                 
                 const turnName = `turn_${turnKey}`;
@@ -1206,32 +1225,33 @@
                 }
                 
                 const turnData = turnMap.get(turnName);
-                
-                // 从observations中提取数据
-                const observations = traceData.observations || trace.observations || [];
-                
-                // 统计LLM调用次数(GENERATION类型)
-                const generations = observations.filter(o => o.type === 'GENERATION');
-                turnData.llm_calls += generations.length;
-                
-                // 统计Tool调用次数(TOOL类型)
-                const tools = observations.filter(o => o.type === 'TOOL');
-                turnData.tool_calls += tools.length;
+                turnData.llm_calls += llm_calls;
+                turnData.tool_calls += tool_calls;
                 
                 // 从GENERATION中提取token使用量
                 generations.forEach(gen => {
-                    if (gen.usageDetails) {
-                        turnData.input_tokens += gen.usageDetails.input || 0;
-                        turnData.output_tokens += gen.usageDetails.output || 0;
-                        turnData.cache_tokens += gen.usageDetails.cache_read || 0;
-                        turnData.reasoning_tokens += gen.usageDetails.reasoning || 0;
-                    }
-                    // 兼容其他字段名
-                    if (gen.usage) {
-                        turnData.input_tokens += gen.usage.input || gen.usage.prompt_tokens || 0;
-                        turnData.output_tokens += gen.usage.output || gen.usage.completion_tokens || 0;
-                        turnData.cache_tokens += gen.usage.cache_read || gen.usage.cache_read_input_tokens || 0;
-                        turnData.reasoning_tokens += gen.usage.reasoning || 0;
+                    // 优先使用 usageDetails（如果非空）
+                    const ud = gen.usageDetails || {};
+                    const u = gen.usage || {};
+                    
+                    if (Object.keys(ud).length > 0) {
+                        turnData.input_tokens += ud.input || 0;
+                        turnData.output_tokens += ud.output || 0;
+                        // 兼容多种cache字段名: cache_read, input_cached_tokens, cache_read_input_tokens
+                        turnData.cache_tokens += ud.cache_read || ud.input_cached_tokens || ud.cache_read_input_tokens || 0;
+                        // 兼容多种reasoning字段名: reasoning, output_reasoning_tokens
+                        turnData.reasoning_tokens += ud.reasoning || ud.output_reasoning_tokens || 0;
+                    } else if (Object.keys(u).length > 0) {
+                        // 仅当 usageDetails 无效时才检查 usage
+                        turnData.input_tokens += u.input || u.prompt_tokens || 0;
+                        turnData.output_tokens += u.output || u.completion_tokens || 0;
+                        // 兼容多种cache字段名
+                        turnData.cache_tokens += u.cache_read || u.cache_read_input_tokens || u.input_cached_tokens || 0;
+                        turnData.reasoning_tokens += u.reasoning || u.output_reasoning_tokens || 0;
+                    } else if (gen.inputUsage !== undefined || gen.outputUsage !== undefined) {
+                        // 仅当 usageDetails 和 usage 都无效时，才使用顶层字段（避免重复计算）
+                        turnData.input_tokens += gen.inputUsage || 0;
+                        turnData.output_tokens += gen.outputUsage || 0;
                     }
                 });
                 
