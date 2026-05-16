@@ -10,3 +10,4 @@
 | 2026-05-16 14:15 | 陆甲 | 基于pur_quo_post_v2_quo_quo_quote_batchaudit的报价单审核技能 | ses_1d0a86582ffex8VMYdzSFoOM3G | deepseek-v4-pro | DeepSeek V4 Pro | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ¥0/0 | ¥0/0 | ¥0/0 | ¥0.0000 | 0.00 | ¥0.00-0.00 |
 | 2026-05-16 14:16 | 陆甲 | 基于pur_quo_post_v2_quo_quo_quote_batchaudit的报价单审核技能 | ses_1d0a86582ffex8VMYdzSFoOM3G | deepseek-v4-pro | DeepSeek V4 Pro | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ¥1/1 | ¥1/1 | ¥1/1 | ¥0.0000 | 0.00 | ¥0.00-0.00 |
 | 2026-05-16 14:21 | 测试 | 测试 | ses_1d0a86582ffex8VMYdzSFoOM3G | deepseek-v4-pro | GLM-5.1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥0.0000 | 0.00 | ¥0.00-0.00 |
+| 2026-05-16 14:28 | 测试 | 测试 | ses_1d0a86582ffex8VMYdzSFoOM3G | deepseek-v4-pro | GLM-5.1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥0.0000 | 0.00 | ¥0.00-0.00 |
