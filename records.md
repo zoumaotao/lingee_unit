@@ -14,3 +14,4 @@
 | 2026-05-16 14:43 | 测试 | 测试 | ses_1d0a86582ffex8VMYdzSFoOM3G | deepseek-v4-pro | GLM-5.1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥0.0000 | 0.00 | ¥0.00-0.00 |
 | 2026-05-16 14:44 | 测试 | 测试 | ses_27a168fdfffeon0A4aXalzKEmd | glm-5 | GLM-5.1 | 8 | 23 | 22 | 1.67M | 838.0K | 21.5K | 809.1K | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥8.7433 | 145.72 | ¥26.23-29.14 |
 | 2026-05-16 14:45 | 测试 | Assistant mode activated for 费用报销智能体 (expense-reimbursement)... | ses_27a168fdfffeon0A4aXalzKEmd | glm-5 | GLM-5.1 | 8 | 23 | 22 | 1.24M | 419.0K | 10.8K | 809.1K | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥5.0437 | 84.06 | ¥15.13-16.81 |
+| 2026-05-16 14:48 | 测试 | Assistant mode activated for 费用报销智能体 (expense-reimbursement)... | ses_27a168fdfffeon0A4aXalzKEmd | glm-5 | GLM-5.1 | 8 | 23 | 22 | 1.67M | 838.0K | 21.5K | 809.1K | ¥6/8 | ¥24/28 | ¥1.3/2 | ¥8.7433 | 145.72 | ¥26.23-29.14 |
