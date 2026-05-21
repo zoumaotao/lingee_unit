@@ -1394,26 +1394,7 @@
             
             // 成本计算
             document.getElementById('costGrid').innerHTML = `
-                <div class="result-item">
-                    <div class="label">输入成本</div>
-                    <div class="value cost">¥${costResult.inputCost.toFixed(4)}</div>
-                    <div class="detail">加权均价 ¥${costResult.avgInputPrice.toFixed(2)}/M × ${(totals.input_tokens/1000000).toFixed(3)}M</div>
-                </div>
-                <div class="result-item">
-                    <div class="label">输出成本</div>
-                    <div class="value cost">¥${costResult.outputCost.toFixed(4)}</div>
-                    <div class="detail">加权均价 ¥${costResult.avgOutputPrice.toFixed(2)}/M × ${(totals.output_tokens/1000000).toFixed(3)}M</div>
-                </div>
-                <div class="result-item">
-                    <div class="label">Cache成本</div>
-                    <div class="value cost">¥${costResult.cacheCost.toFixed(4)}</div>
-                    <div class="detail">加权均价 ¥${costResult.avgCachePrice.toFixed(2)}/M × ${(totals.cache_tokens/1000000).toFixed(3)}M</div>
-                </div>
-                <div class="result-item">
-                    <div class="label">总成本</div>
-                    <div class="value cost">¥${costResult.totalCost.toFixed(4)}</div>
-                    <div class="detail">分段定价: &lt;32K用短价, ≥32K用长价</div>
-                </div>
+                
             `;
             
             // 最终点数
