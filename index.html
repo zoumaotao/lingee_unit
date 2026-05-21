@@ -667,8 +667,6 @@
                                     <th>Output Tokens</th>
                                     <th>Cache Tokens</th>
                                     <th>总Tokens</th>
-                                    <th>成本(元)</th>
-                                    <th>点数</th>
                                 </tr>
                             </thead>
                             <tbody id="turnTableBody"></tbody>
@@ -1436,8 +1434,6 @@
                         <td>${formatNumber(turn.output_tokens)}</td>
                         <td>${formatNumber(turn.cache_tokens)}</td>
                         <td>${formatNumber(turn.total_tokens)}</td>
-                        <td>¥${turnCost.cost.toFixed(4)}</td>
-                        <td>${turnCost.points.toFixed(2)}</td>
                     </tr>
                 `;
             }).join('');
