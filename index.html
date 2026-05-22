@@ -654,7 +654,7 @@
                 <div class="result-section">
                     <h4>📋 Turn级别明细</h4>
                     <p style="color: #666; font-size: 13px; margin-bottom: 12px;">
-                        💡 分段定价规则（仅GLM-5.1）：每个Turn独立判断价格档位，该Turn输入≥32K则整个Turn按长价格计算（输入、输出、缓存均用长价），否则用短价格。Turn编号后标<span style="color:#e67e22;">「长」</span>表示触发了长价格。其他模型使用统一价格，不区分长短。
+                        💡 分段定价规则（仅GLM-5.1）：每次LLM调用独立判断价格档位，该次调用输入≥32K则按长价格计算（输入、输出、缓存均用长价），否则用短价格。Turn编号后标<span style="color:#e67e22;">「长」</span>表示该Turn内包含触发了长价格的调用。其他模型使用统一价格，不区分长短。
                     </p>
                     <div style="overflow-x: auto;">
                         <table class="turn-table" id="turnTable">
@@ -667,6 +667,8 @@
                                     <th>Output Tokens</th>
                                     <th>Cache Tokens</th>
                                     <th>总Tokens</th>
+                                    <th>成本(元)</th>
+                                    <th>点数</th>
                                 </tr>
                             </thead>
                             <tbody id="turnTableBody"></tbody>
@@ -1110,7 +1112,7 @@
                     });
                     
                     if (updateResponse.ok) {
-                        showSaveStatus('success', '✅ 记录已自动保存到 GitHub records.md');
+                        showSaveStatus('success', '✅ 记录已自动保存到 GitHub records.md', newRecord);
                         return;
                     }
                     
@@ -1131,7 +1133,7 @@
         }
         
         // 显示保存状态
-        function showSaveStatus(type, message) {
+        function showSaveStatus(type, message, record) {
             let statusEl = document.getElementById('saveStatus');
             if (!statusEl) {
                 statusEl = document.createElement('div');
@@ -1154,7 +1156,12 @@
                 statusEl.style.border = '1px solid #ffc107';
             }
             
-            statusEl.textContent = message;
+            // 显示消息
+            let html = message;
+            
+        
+            
+            statusEl.innerHTML = html;
             statusEl.style.opacity = '1';
             
             // 5秒后淡出
@@ -1169,6 +1176,30 @@
                 return (count / 1000).toFixed(1) + 'K';
             }
             return count.toString();
+        }
+        
+        // 从单个generation中提取token用量
+        function extractGenTokens(gen) {
+            const ud = gen.usageDetails || {};
+            const u = gen.usage || {};
+            let input = 0, output = 0, cache = 0, reasoning = 0;
+            
+            if (Object.keys(ud).length > 0) {
+                input = ud.input || 0;
+                output = ud.output || 0;
+                cache = ud.cache_read || ud.provider_cache_read || ud.input_cached_tokens || ud.cache_read_input_tokens || 0;
+                reasoning = ud.reasoning || ud.output_reasoning_tokens || 0;
+            } else if (Object.keys(u).length > 0) {
+                input = u.input || u.prompt_tokens || 0;
+                output = u.output || u.completion_tokens || 0;
+                cache = u.cache_read || u.provider_cache_read || u.cache_read_input_tokens || u.input_cached_tokens || 0;
+                reasoning = u.reasoning || u.output_reasoning_tokens || 0;
+            } else if (gen.inputUsage !== undefined || gen.outputUsage !== undefined) {
+                input = gen.inputUsage || 0;
+                output = gen.outputUsage || 0;
+            }
+            
+            return { input, output, cache, reasoning };
         }
         
         // 解析traces提取turn级别数据
@@ -1218,7 +1249,8 @@
                         output_tokens: 0,
                         cache_tokens: 0,
                         reasoning_tokens: 0,
-                        total_tokens: 0
+                        total_tokens: 0,
+                        generations: [] // 存储每次LLM调用的token明细，用于按调用级别计价
                     });
                 }
                 
@@ -1226,31 +1258,15 @@
                 turnData.llm_calls += llm_calls;
                 turnData.tool_calls += tool_calls;
                 
-                // 从GENERATION中提取token使用量
+                // 从GENERATION中提取token使用量（逐个记录，用于按调用级别分段定价）
                 generations.forEach(gen => {
-                    // 优先使用 usageDetails（如果非空）
-                    const ud = gen.usageDetails || {};
-                    const u = gen.usage || {};
-                    
-                    if (Object.keys(ud).length > 0) {
-                        turnData.input_tokens += ud.input || 0;
-                        turnData.output_tokens += ud.output || 0;
-                        // 兼容多种cache字段名: cache_read, input_cached_tokens, cache_read_input_tokens
-                        turnData.cache_tokens += ud.cache_read || ud.input_cached_tokens || ud.cache_read_input_tokens || 0;
-                        // 兼容多种reasoning字段名: reasoning, output_reasoning_tokens
-                        turnData.reasoning_tokens += ud.reasoning || ud.output_reasoning_tokens || 0;
-                    } else if (Object.keys(u).length > 0) {
-                        // 仅当 usageDetails 无效时才检查 usage
-                        turnData.input_tokens += u.input || u.prompt_tokens || 0;
-                        turnData.output_tokens += u.output || u.completion_tokens || 0;
-                        // 兼容多种cache字段名
-                        turnData.cache_tokens += u.cache_read || u.cache_read_input_tokens || u.input_cached_tokens || 0;
-                        turnData.reasoning_tokens += u.reasoning || u.output_reasoning_tokens || 0;
-                    } else if (gen.inputUsage !== undefined || gen.outputUsage !== undefined) {
-                        // 仅当 usageDetails 和 usage 都无效时，才使用顶层字段（避免重复计算）
-                        turnData.input_tokens += gen.inputUsage || 0;
-                        turnData.output_tokens += gen.outputUsage || 0;
-                    }
+                    const tokens = extractGenTokens(gen);
+                    turnData.input_tokens += tokens.input;
+                    turnData.output_tokens += tokens.output;
+                    turnData.cache_tokens += tokens.cache;
+                    turnData.reasoning_tokens += tokens.reasoning;
+                    // 保存每次调用的明细
+                    turnData.generations.push(tokens);
                 });
                 
                 // 计算总tokens
@@ -1288,7 +1304,7 @@
             });
         }
         
-        // 计算成本和点数（分段定价：根据每个turn的输入token数判断用短/长价格）
+        // 计算成本和点数（分段定价：根据每次LLM调用的输入token数判断用短/长价格）
         function calculateCostSegmented(totals, turnData, priceConfig) {
             const THRESHOLD = 32000; // 32K token分界线
             
@@ -1296,27 +1312,42 @@
             let totalOutputCost = 0;
             let totalCacheCost = 0;
             
-            // 按每个turn的输入长度判断使用哪个价格档位
+            // 按每次LLM调用的输入长度判断使用哪个价格档位
             turnData.forEach(turn => {
-                const isLong = turn.input_tokens >= THRESHOLD;
-                const inputPrice = isLong ? priceConfig.inputPriceLong : priceConfig.inputPriceShort;
-                const outputPrice = isLong ? priceConfig.outputPriceLong : priceConfig.outputPriceShort;
-                const cachePrice = isLong ? priceConfig.cachePriceLong : priceConfig.cachePriceShort;
+                let turnInputCost = 0;
+                let turnOutputCost = 0;
+                let turnCacheCost = 0;
+                let hasLongCall = false;
                 
-                totalInputCost += (turn.input_tokens * inputPrice) / 1000000;
-                totalOutputCost += (turn.output_tokens * outputPrice) / 1000000;
-                totalCacheCost += (turn.cache_tokens * cachePrice) / 1000000;
+                turn.generations.forEach(gen => {
+                    const isLong = gen.input >= THRESHOLD;
+                    if (isLong) hasLongCall = true;
+                    const inputPrice = isLong ? priceConfig.inputPriceLong : priceConfig.inputPriceShort;
+                    const outputPrice = isLong ? priceConfig.outputPriceLong : priceConfig.outputPriceShort;
+                    const cachePrice = isLong ? priceConfig.cachePriceLong : priceConfig.cachePriceShort;
+                    
+                    // input包含cache命中部分，需扣除后按输入价格计算，cache部分按缓存价格计算
+                    const nonCacheInput = Math.max(0, gen.input - gen.cache);
+                    turnInputCost += (nonCacheInput * inputPrice) / 1000000;
+                    turnOutputCost += (gen.output * outputPrice) / 1000000;
+                    turnCacheCost += (gen.cache * cachePrice) / 1000000;
+                });
                 
-                // 存储每个turn使用的价格档位
-                turn.priceLevel = isLong ? 'long' : 'short';
-                turn.usedInputPrice = inputPrice;
-                turn.usedOutputPrice = outputPrice;
-                turn.usedCachePrice = cachePrice;
+                totalInputCost += turnInputCost;
+                totalOutputCost += turnOutputCost;
+                totalCacheCost += turnCacheCost;
+                
+                // 存储Turn级别的汇总成本（用于Turn明细表显示）
+                turn.turnInputCost = turnInputCost;
+                turn.turnOutputCost = turnOutputCost;
+                turn.turnCacheCost = turnCacheCost;
+                // 标记该Turn是否包含长调用（用于UI显示）
+                turn.priceLevel = hasLongCall ? 'long' : 'short';
             });
             
             const totalCost = totalInputCost + totalOutputCost + totalCacheCost;
             
-            // 第二步:计算点数 
+            // 第二步:计算点数 (1点 = ¥0.06)
             const totalPoints = totalCost / 0.06;
             
             // 计算加权平均价格（用于显示）
@@ -1394,7 +1425,26 @@
             
             // 成本计算
             document.getElementById('costGrid').innerHTML = `
-                
+                <div class="result-item">
+                    <div class="label">输入成本</div>
+                    <div class="value cost">¥${costResult.inputCost.toFixed(4)}</div>
+                    <div class="detail">加权均价 ¥${costResult.avgInputPrice.toFixed(2)}/M × ${(totals.input_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">输出成本</div>
+                    <div class="value cost">¥${costResult.outputCost.toFixed(4)}</div>
+                    <div class="detail">加权均价 ¥${costResult.avgOutputPrice.toFixed(2)}/M × ${(totals.output_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Cache成本</div>
+                    <div class="value cost">¥${costResult.cacheCost.toFixed(4)}</div>
+                    <div class="detail">加权均价 ¥${costResult.avgCachePrice.toFixed(2)}/M × ${(totals.cache_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">总成本</div>
+                    <div class="value cost">¥${costResult.totalCost.toFixed(4)}</div>
+                    <div class="detail">按每次调用分段定价: &lt;32K用短价, ≥32K用长价</div>
+                </div>
             `;
             
             // 最终点数
@@ -1415,6 +1465,8 @@
                         <td>${formatNumber(turn.output_tokens)}</td>
                         <td>${formatNumber(turn.cache_tokens)}</td>
                         <td>${formatNumber(turn.total_tokens)}</td>
+                        <td>¥${turnCost.cost.toFixed(4)}</td>
+                        <td>${turnCost.points.toFixed(2)}</td>
                     </tr>
                 `;
             }).join('');
@@ -1429,6 +1481,8 @@
                     <td>${formatNumber(totals.output_tokens)}</td>
                     <td>${formatNumber(totals.cache_tokens)}</td>
                     <td>${formatNumber(totals.total_tokens)}</td>
+                    <td>¥${costResult.totalCost.toFixed(4)}</td>
+                    <td>${costResult.totalPoints.toFixed(2)}</td>
                 </tr>
             `;
             
@@ -1436,11 +1490,9 @@
             generateAnalysis(totals, turnData, priceConfig);
         }
         
-        // 计算单个turn的成本（使用分段定价后存储的价格）
+        // 计算单个turn的成本（使用按调用级别计算后的汇总成本）
         function calculateTurnCostSegmented(turn) {
-            const cost = (turn.input_tokens * turn.usedInputPrice + 
-                         turn.output_tokens * turn.usedOutputPrice + 
-                         turn.cache_tokens * turn.usedCachePrice) / 1000000;
+            const cost = (turn.turnInputCost || 0) + (turn.turnOutputCost || 0) + (turn.turnCacheCost || 0);
             const points = cost / 0.06;
             return { cost, points };
         }
