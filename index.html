@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -1183,23 +1183,78 @@
             const ud = gen.usageDetails || {};
             const u = gen.usage || {};
             let input = 0, output = 0, cache = 0, reasoning = 0;
+            // inputIncludesCache: 标记input字段是否已包含cache
+            // - GLM-5.1格式(provider_cache_read): input包含cache → true
+            // - GLM-5格式(cache_read): input不含cache → false
+            // - DeepSeek格式(input_cached_tokens): input不含cache → false
+            let inputIncludesCache = true;
+            // reasoningBillable: reasoning tokens是否需要计费
+            // - DeepSeek: reasoning计入total，需计费 → true
+            // - GLM-5: reasoning不计入total，不计费 → false
+            // - GLM-5.1: 无reasoning字段 → false
+            let reasoningBillable = false;
             
             if (Object.keys(ud).length > 0) {
                 input = ud.input || 0;
                 output = ud.output || 0;
-                cache = ud.cache_read || ud.provider_cache_read || ud.input_cached_tokens || ud.cache_read_input_tokens || 0;
-                reasoning = ud.reasoning || ud.output_reasoning_tokens || 0;
+                
+                // 判断cache来源和input是否包含cache
+                if (ud.input_cached_tokens !== undefined) {
+                    // DeepSeek格式: input不含cache
+                    cache = ud.input_cached_tokens;
+                    inputIncludesCache = false;
+                    reasoning = ud.output_reasoning_tokens || 0;
+                    reasoningBillable = true; // DeepSeek的reasoning计费
+                } else if (ud.cache_read !== undefined) {
+                    // GLM-5格式: input不含cache
+                    cache = ud.cache_read;
+                    inputIncludesCache = false;
+                    reasoning = ud.reasoning || 0;
+                    reasoningBillable = false; // GLM-5的reasoning不计入total，不计费
+                } else if (ud.provider_cache_read !== undefined) {
+                    // GLM-5.1格式: input包含cache
+                    cache = ud.provider_cache_read;
+                    inputIncludesCache = true;
+                    reasoning = ud.reasoning || 0;
+                    reasoningBillable = false;
+                } else {
+                    // 兜底：无cache字段
+                    cache = 0;
+                    inputIncludesCache = true;
+                    reasoning = ud.reasoning || ud.output_reasoning_tokens || 0;
+                    reasoningBillable = false;
+                }
             } else if (Object.keys(u).length > 0) {
                 input = u.input || u.prompt_tokens || 0;
                 output = u.output || u.completion_tokens || 0;
-                cache = u.cache_read || u.provider_cache_read || u.cache_read_input_tokens || u.input_cached_tokens || 0;
-                reasoning = u.reasoning || u.output_reasoning_tokens || 0;
+                
+                if (u.input_cached_tokens !== undefined) {
+                    cache = u.input_cached_tokens;
+                    inputIncludesCache = false;
+                    reasoning = u.output_reasoning_tokens || 0;
+                    reasoningBillable = true;
+                } else if (u.cache_read !== undefined) {
+                    cache = u.cache_read;
+                    inputIncludesCache = false;
+                    reasoning = u.reasoning || 0;
+                    reasoningBillable = false;
+                } else if (u.provider_cache_read !== undefined) {
+                    cache = u.provider_cache_read;
+                    inputIncludesCache = true;
+                    reasoning = u.reasoning || 0;
+                    reasoningBillable = false;
+                } else {
+                    cache = u.cache_read_input_tokens || 0;
+                    inputIncludesCache = true;
+                    reasoning = u.reasoning || u.output_reasoning_tokens || 0;
+                    reasoningBillable = false;
+                }
             } else if (gen.inputUsage !== undefined || gen.outputUsage !== undefined) {
                 input = gen.inputUsage || 0;
                 output = gen.outputUsage || 0;
             }
             
-            return { input, output, cache, reasoning };
+            return { input, output, cache, reasoning, inputIncludesCache, reasoningBillable };
         }
         
         // 解析traces提取turn级别数据
@@ -1320,16 +1375,26 @@
                 let hasLongCall = false;
                 
                 turn.generations.forEach(gen => {
-                    const isLong = gen.input >= THRESHOLD;
+                    // 判断长短价格档位时，用实际上下文总长度:
+                    // - GLM-5.1: input已含cache，直接用input判断
+                    // - GLM-5/DeepSeek: input不含cache，用input+cache判断实际上下文长度
+                    const contextLength = gen.inputIncludesCache ? gen.input : (gen.input + gen.cache);
+                    const isLong = contextLength >= THRESHOLD;
                     if (isLong) hasLongCall = true;
                     const inputPrice = isLong ? priceConfig.inputPriceLong : priceConfig.inputPriceShort;
                     const outputPrice = isLong ? priceConfig.outputPriceLong : priceConfig.outputPriceShort;
                     const cachePrice = isLong ? priceConfig.cachePriceLong : priceConfig.cachePriceShort;
                     
-                    // input包含cache命中部分，需扣除后按输入价格计算，cache部分按缓存价格计算
-                    const nonCacheInput = Math.max(0, gen.input - gen.cache);
+                    // 根据数据格式决定是否扣除cache:
+                    // - GLM-5.1(inputIncludesCache=true): input包含cache, 需扣除
+                    // - GLM-5/DeepSeek(inputIncludesCache=false): input已是纯新增输入, 直接计费
+                    const nonCacheInput = gen.inputIncludesCache 
+                        ? Math.max(0, gen.input - gen.cache) 
+                        : gen.input;
                     turnInputCost += (nonCacheInput * inputPrice) / 1000000;
-                    turnOutputCost += (gen.output * outputPrice) / 1000000;
+                    // 输出费用: output + reasoning(仅当reasoningBillable时计入)
+                    const billableOutput = gen.reasoningBillable ? (gen.output + gen.reasoning) : gen.output;
+                    turnOutputCost += (billableOutput * outputPrice) / 1000000;
                     turnCacheCost += (gen.cache * cachePrice) / 1000000;
                 });
                 
@@ -1425,7 +1490,26 @@
             
             // 成本计算
             document.getElementById('costGrid').innerHTML = `
-                
+                <div class="result-item">
+                    <div class="label">输入成本</div>
+                    <div class="value cost">¥${costResult.inputCost.toFixed(4)}</div>
+                    <div class="detail">加权均价 ¥${costResult.avgInputPrice.toFixed(2)}/M × ${(totals.input_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">输出成本</div>
+                    <div class="value cost">¥${costResult.outputCost.toFixed(4)}</div>
+                    <div class="detail">加权均价 ¥${costResult.avgOutputPrice.toFixed(2)}/M × ${(totals.output_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Cache成本</div>
+                    <div class="value cost">¥${costResult.cacheCost.toFixed(4)}</div>
+                    <div class="detail">加权均价 ¥${costResult.avgCachePrice.toFixed(2)}/M × ${(totals.cache_tokens/1000000).toFixed(3)}M</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">总成本</div>
+                    <div class="value cost">¥${costResult.totalCost.toFixed(4)}</div>
+                    <div class="detail">按每次调用分段定价: &lt;32K用短价, ≥32K用长价</div>
+                </div>
             `;
             
             // 最终点数
